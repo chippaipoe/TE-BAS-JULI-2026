@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Live Voting & Countdown Resmi v5.0</title>
+    <title>Sistem Live Voting & Countdown v6.0</title>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -145,8 +145,8 @@
         #user-status { margin-top: 15px; font-size: 0.9rem; font-weight: 500; color: #fbbf24; }
         
         #version-tag {
-            margin-top: 15px;
-            font-size: 0.75rem;
+            margin-top: 20px;
+            font-size: 0.8rem;
             color: #64748b;
             letter-spacing: 1px;
             font-weight: bold;
@@ -208,13 +208,13 @@
         </div>
     </div>
 
-    <!-- Teks Penanda Versi Perubahan -->
-    <div id="version-tag">VERSI APLIKASI: 5.0 (UPDATE TERBARU)</div>
+    <!-- Teks Penanda Validasi Perubahan -->
+    <div id="version-tag">VERSI SISTEM: 6.0 (STABLE FIXED)</div>
 
-    <!-- SCRIPT UTAMA: Menggunakan Firebase Modular SDK v10 (Terbaru & Paling Stabil) -->
+    <!-- SCRIPT UTAMA MODULE FIREBASE SDK v10 -->
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
-        import { getDatabase, ref, onValue, set, runTransaction, remove } from "https://gstatic.com";
+        import { getDatabase, ref, onValue, set, runTransaction, remove, get } from "https://gstatic.com";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDFQvJ9K7mEOwF1Q3U6OddbXKMuT9Opdqg",
@@ -227,11 +227,9 @@
             measurementId: "G-6RCDPY9HBT"
         };
 
-        // Inisialisasi Firebase v10
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // Evaluasi URL Parameter
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user');
         const isParticipant = urlParams.has('user') && userId !== null && userId !== "";
@@ -240,11 +238,11 @@
         let localSecondsLeft = 300;
         let serverTimerActive = false;
 
-        // Atur Tampilan Sesuai Peran
+        // Menyembunyikan input konfigurasi dari mata peserta secara aman
         function applyRoleUI() {
             const adminBox = document.getElementById('admin-controls');
             if (isParticipant) {
-                if (adminBox) adminBox.style.display = 'none';
+                if (adminBox) adminBox.style.setProperty('display', 'none', 'important');
                 document.getElementById('timer-title').innerText = "Sisa Waktu Pemilihan";
             } else {
                 document.getElementById('timer-title').innerText = "Panel Kontrol Utama Admin";
@@ -252,14 +250,14 @@
         }
         applyRoleUI();
 
-        // 1. DENGARKAN SKOR LIVE DARI FIREBASE
+        // 1. DENGARKAN DATA SKOR DARI DATABASE
         onValue(ref(database, 'votes/scores'), (snapshot) => {
             const data = snapshot.val() || { teamA: 0, teamB: 0 };
             document.getElementById('score-teamA').innerText = data.teamA || 0;
             document.getElementById('score-teamB').innerText = data.teamB || 0;
         });
 
-        // 2. DENGARKAN STATUS TIMER LIVE DARI FIREBASE
+        // 2. DENGARKAN STATUS TIMER DARI DATABASE
         onValue(ref(database, 'votes/timerState'), (snapshot) => {
             const state = snapshot.val();
             if (state) {
@@ -276,9 +274,10 @@
 
                 if (localSecondsLeft <= 0) {
                     document.getElementById("timer-container").classList.add("time-up-container");
-                    disableVotingButtons("Sesi voting ditutup / berakhir! 🚨");
+                    disableVotingButtons("Sesi voting telah ditutup! 🚨");
                 } else {
                     document.getElementById("timer-container").classList.remove("time-up-container");
                     checkUserVotingStatus();
                 }
             } else {
+                updateDisplay(localSecondsLeft);
