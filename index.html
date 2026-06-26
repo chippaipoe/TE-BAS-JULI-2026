@@ -157,8 +157,8 @@
     <div class="container" id="timer-container">
         <h1 id="timer-title">Panel Pengatur Waktu</h1>
         
-        <!-- Sisi pengaturan admin -->
-        <div id="admin-controls">
+        <!-- Bungkus area admin agar mudah dikendalikan -->
+        <div id="admin-controls" style="display: block;">
             <div class="input-group">
                 <input type="number" id="minutes-input" min="1" max="60" value="5">
             </div>
@@ -199,12 +199,12 @@
         </div>
     </div>
 
-    <!-- Pustaka Inti Firebase (Versi Stabil yang Direkomendasikan) -->
+    <!-- Pustaka Inti Firebase CDN v8 -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
 
     <script>
-        // Memakai data konfigurasi database resmi milik Anda
+        // Konfigurasi Database Firebase Resmi Milik Anda
         const firebaseConfig = {
             apiKey: "AIzaSyDFQvJ9K7mEOwF1Q3U6OddbXKMuT9Opdqg",
             authDomain: "://firebaseapp.com",
@@ -217,38 +217,37 @@
         };
         
         firebase.initializeApp(firebaseConfig);
-        
-        // Memaksa sambungan langsung ke URL server wilayah Asia Tenggara (Singapore)
         const database = firebase.database("https://firebasedatabase.app");
 
+        // Membaca parameter dari URL di browser
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user');
+        const isParticipant = urlParams.has('user') && userId !== null && userId !== ""; 
 
-        let isParticipant = urlParams.has('user'); 
         let countdownInterval = null;
         let localSecondsLeft = 300;
         let serverTimerActive = false;
 
-        // PERBAIKAN LOGIKA: Sembunyikan setelan input dari layar peserta tanpa memicu eror skrip
-        if (isParticipant) {
+        // PROSES PEMISAHAN TAMPILAN (Hapus kontrol admin jika dibuka oleh peserta)
+        function applyRoleUI() {
             const adminBox = document.getElementById('admin-controls');
-            if (adminBox) {
-                adminBox.innerHTML = ""; 
-                adminBox.style.display = 'none'; 
+            if (isParticipant) {
+                if (adminBox) adminBox.remove(); // Menghapus total elemen input menit & button start dari layar user
+                document.getElementById('timer-title').innerText = "Sisa Waktu Pemilihan";
+            } else {
+                document.getElementById('timer-title').innerText = "Panel Kontrol Utama Admin";
             }
-            document.getElementById('timer-title').innerText = "Sisa Waktu Pemilihan";
-        } else {
-            document.getElementById('timer-title').innerText = "Panel Kontrol Utama Admin";
         }
+        applyRoleUI();
 
-        // Sinkronisasi Perubahan Skor Live dari Firebase
+        // 1. SYNC SKOR LIVE DARI DATABASE
         database.ref('votes/scores').on('value', (snapshot) => {
             const data = snapshot.val() || { teamA: 0, teamB: 0 };
             document.getElementById('score-teamA').innerText = data.teamA;
             document.getElementById('score-teamB').innerText = data.teamB;
         });
 
-        // Sinkronisasi Sisa Waktu Detik dari Firebase
+        // 2. SYNC WAKTU COUNTDOWN DARI DATABASE
         database.ref('votes/timerState').on('value', (snapshot) => {
             const state = snapshot.val();
             if (state) {
@@ -276,4 +275,3 @@
         function runClockLogic() {
             clearInterval(countdownInterval);
             countdownInterval = setInterval(() => {
-                if (localSecondsLeft > 0 && serverTimerActive) {
