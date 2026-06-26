@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown & Live Voting System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(30, 41, 59, 0.7);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 40px rgba(56, 189, 248, 0.1);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 480px;
+            margin-bottom: 20px;
+        }
+
+        h1, h2 {
+            margin-top: 0;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h1 { font-size: 1.6rem; margin-bottom: 20px; }
+        h2 { font-size: 1.3rem; margin-bottom: 15px; color: #a78bfa; }
+
+        /* Countdown Area */
+        .countdown-flex {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .time-box {
+            background: #111827;
+            padding: 15px;
+            border-radius: 12px;
+            min-width: 75px;
+            border-bottom: 4px solid #38bdf8;
+        }
+
+        .number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            font-family: monospace;
+        }
+
+        .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            display: block;
+            margin-top: 5px;
+        }
+
+        /* Voting Area */
+        .voting-flex {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .team-card {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .team-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .vote-count {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #34d399;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-vote { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); }
+        .btn-vote:hover:not(:disabled) { transform: translateY(-2px); }
+        button:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        #user-status {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #fbbf24;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BOX 1: COUNTDOWN TIMER -->
+    <div class="container">
+        <h1>Waktu Pemilihan</h1>
+        <div class="countdown-flex">
+            <div class="time-box">
+                <span id="display-minutes" class="number">05</span>
+                <span class="label">Menit</span>
+            </div>
+            <div class="time-box">
+                <span id="display-seconds" class="number">00</span>
+                <span class="label">Detik</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOX 2: LIVE VOTING SYSTEM -->
+    <div class="container">
+        <h2>Live Voting Skor</h2>
+        <div id="user-status">Memeriksa tautan peserta...</div>
+        
+        <div class="voting-flex">
+            <!-- TIM A -->
+            <div class="team-card">
+                <div class="team-name" style="color: #f43f5e;">TIM A</div>
+                <div class="vote-count" id="score-teamA">0</div>
+                <button class="btn-vote" id="btn-teamA" onclick="submitVote('teamA')" disabled>PILIH</button>
+            </div>
+            <!-- TIM B -->
+            <div class="team-card">
+                <div class="team-name" style="color: #06b6d4;">TIM B</div>
+                <div class="vote-count" id="score-teamB">0</div>
+                <button class="btn-vote" id="btn-teamB" onclick="submitVote('teamB')" disabled>PILIH</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memuat SDK Firebase secara Realtime via CDN -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+
+    <script>
+        // 1. KONFIGURASI FIREBASE (Ganti dengan kode milik Projek Firebase Anda)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDFQvJ9K7mEOwF1Q3U6OddbXKMuT9Opdqg",
+            authDomain: "db-te-bas-juli-2026.firebaseapp.com",
+            databaseURL: "https://db-te-bas-juli-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "db-te-bas-juli-2026",
+            storageBucket: "db-te-bas-juli-2026.firebasestorage.app",
+            messagingSenderId: "523158894524",
+            appId: "1:523158894524:web:01e584f701fb6579f5ddb9"
+        };
+        
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 2. LOGIKA MENANGKAP ID PESERTA DARI URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user'); // Mengambil teks setelah '?user='
+
+        let timerRunning = false;
+
+        // 3. AMBIL DATA REALTIME DARI DATABASE
+        // Mendengarkan perubahan skor Tim A dan Tim B secara LIVE
+        database.ref('votes/scores').on('value', (snapshot) => {
+            const data = snapshot.val() || { teamA: 0, teamB: 0 };
+            document.getElementById('score-teamA').innerText = data.teamA;
+            document.getElementById('score-teamB').innerText = data.teamB;
+        });
+
+        // Mendengarkan waktu hitung mundur dari database (Sinkron untuk semua layar)
+        database.ref('votes/timer').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                updateDisplay(data.secondsLeft);
+                timerRunning = data.isRunning;
+                
+                if (data.secondsLeft <= 0 || !data.isRunning) {
+                    disableVotingButtons("Waktu voting telah berakhir!");
+                } else {
+                    checkUserVotingStatus();
+                }
+            }
+        });
+
+        // 4. CEK APAKAH USER VALID & BELUM PERNAH VOTE
+        function checkUserVotingStatus() {
+            if (!userId) {
+                disableVotingButtons("Akses Ditolak: Anda memerlukan tautan resmi.");
+                return;
+            }
+
+            // Cek ke database apakah ID user ini sudah terdaftar pernah memilih
+            database.ref('votes/voters/' + userId).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    disableVotingButtons("Anda sudah menggunakan hak suara Anda.");
+                } else if (timerRunning) {
+                    // Jika user valid dan timer masih berjalan, tombol diaktifkan
+                    document.getElementById('btn-teamA').disabled = false;
+                    document.getElementById('btn-teamB').disabled = false;
+                    document.getElementById('user-status').innerText = `Masuk sebagai: ${userId} (Belum memilih)`;
+                    document.getElementById('user-status').style.color = "#34d399";
+                }
+            });
+        }
+
+        // 5. PROSES PENGIRIMAN VOTE
+        function submitVote(selectedTeam) {
+            if (!userId || !timerRunning) return;
+
+            // Kunci tombol seketika agar tidak terjadi double-click sebelum proses selesai
+            document.getElementById('btn-teamA').disabled = true;
+            document.getElementById('btn-teamB').disabled = true;
+
+            // Transaksi database: tandai user sudah memilih, lalu tambah skor tim terkait
+            const voterRef = database.ref('votes/voters/' + userId);
+            
+            voterRef.once('value').then((snapshot) => {
+                if (!snapshot.exists()) {
+                    // Catat nama user ke daftar pemilih agar tidak bisa mengulang
+                    voterRef.set({ votedFor: selectedTeam, timestamp: Date.now() });
+
+                    // Tambah nilai skor di database secara otomatis (+1)
+                    const scoreRef = database.ref('votes/scores/' + selectedTeam);
+                    scoreRef.transaction((currentScore) => {
+                        return (currentScore || 0) + 1;
+                    });
+
+                    disableVotingButtons("Terima kasih! Pilihan Anda berhasil dikirim.");
+                } else {
+                    disableVotingButtons("Gagal: Anda terdeteksi sudah memilih.");
+                }
+            });
+        }
+
+        // Pembantu untuk mematikan semua tombol pemilihan
+        function disableVotingButtons(message) {
+            document.getElementById('btn-teamA').disabled = true;
+            document.getElementById('btn-teamB').disabled = true;
+            document.getElementById('user-status').innerText = message;
+            document.getElementById('user-status').style.color = "#ef4444";
+        }
+
+        // Format tampilan menit & detik
+        function updateDisplay(secondsLeft) {
