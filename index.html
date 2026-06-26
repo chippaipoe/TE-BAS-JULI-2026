@@ -30,6 +30,7 @@
             width: 100%;
             max-width: 440px;
             margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
 
         h1, h2 {
@@ -90,6 +91,7 @@
             color: #94a3b8 !important;
             cursor: not-allowed;
             transform: none !important;
+            box-shadow: none !important;
         }
 
         .countdown-flex {
@@ -157,8 +159,8 @@
     <div class="container" id="timer-container">
         <h1 id="timer-title">Panel Pengatur Waktu</h1>
         
-        <!-- Bungkus area admin agar mudah dikendalikan -->
-        <div id="admin-controls" style="display: block;">
+        <!-- Area Pengaturan Utama Admin -->
+        <div id="admin-controls">
             <div class="input-group">
                 <input type="number" id="minutes-input" min="1" max="60" value="5">
             </div>
@@ -199,7 +201,7 @@
         </div>
     </div>
 
-    <!-- Pustaka Inti Firebase CDN v8 -->
+    <!-- Pustaka Inti Firebase CDN v8 Standar -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
 
@@ -207,7 +209,7 @@
         // Konfigurasi Database Firebase Resmi Milik Anda
         const firebaseConfig = {
             apiKey: "AIzaSyDFQvJ9K7mEOwF1Q3U6OddbXKMuT9Opdqg",
-            authDomain: "://firebaseapp.com",
+            authDomain: "db-te-bas-juli-2026.firebaseapp.com",
             databaseURL: "https://firebasedatabase.app",
             projectId: "db-te-bas-juli-2026",
             storageBucket: "db-te-bas-juli-2026.firebasestorage.app",
@@ -219,7 +221,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database("https://firebasedatabase.app");
 
-        // Membaca parameter dari URL di browser
+        // Evaluasi URL Parameter
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user');
         const isParticipant = urlParams.has('user') && userId !== null && userId !== ""; 
@@ -228,11 +230,14 @@
         let localSecondsLeft = 300;
         let serverTimerActive = false;
 
-        // PROSES PEMISAHAN TAMPILAN (Hapus kontrol admin jika dibuka oleh peserta)
+        // PERBAIKAN TOTAL: Proses eliminasi elemen admin untuk menjaga kestabilan DOM Script
         function applyRoleUI() {
             const adminBox = document.getElementById('admin-controls');
             if (isParticipant) {
-                if (adminBox) adminBox.remove(); // Menghapus total elemen input menit & button start dari layar user
+                if (adminBox) {
+                    adminBox.innerHTML = ""; // Bersihkan isinya terlebih dahulu
+                    adminBox.style.display = 'none'; // Sembunyikan pembungkusnya
+                }
                 document.getElementById('timer-title').innerText = "Sisa Waktu Pemilihan";
             } else {
                 document.getElementById('timer-title').innerText = "Panel Kontrol Utama Admin";
@@ -269,9 +274,4 @@
                     document.getElementById("timer-container").classList.remove("time-up-container");
                     checkUserVotingStatus();
                 }
-            }
-        });
-
-        function runClockLogic() {
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
+            } else {
