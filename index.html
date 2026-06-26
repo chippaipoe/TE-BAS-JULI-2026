@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Countdown & Live Voting System Official</title>
+    <title>Live Voting & Countdown System Official</title>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -30,7 +30,6 @@
             width: 100%;
             max-width: 440px;
             margin-bottom: 20px;
-            transition: all 0.3s ease;
         }
 
         h1, h2 {
@@ -91,7 +90,6 @@
             color: #94a3b8 !important;
             cursor: not-allowed;
             transform: none !important;
-            box-shadow: none !important;
         }
 
         .countdown-flex {
@@ -151,31 +149,31 @@
             40%, 80% { transform: translateX(6px); }
         }
         .time-up-container { animation: shake 0.5s ease-in-out infinite; border-color: #ef4444; }
-        .time-up-box { border-bottom-color: #ef4444 !important; }
-        .time-up-number { color: #ef4444; }
     </style>
 </head>
 <body>
 
-    <!-- BOX 1: COUNTDOWN TIMER CONTROLLER -->
+    <!-- BOX 1: COUNTDOWN TIMER -->
     <div class="container" id="timer-container">
-        <h1>Waktu Pemilihan</h1>
+        <h1 id="timer-title">Panel Pengatur Waktu</h1>
         
-        <div class="input-group">
-            <input type="number" id="minutes-input" min="1" max="60" value="5">
-        </div>
-
-        <div class="button-group">
-            <button class="btn-start" onclick="startTimer()">MULAI</button>
-            <button class="btn-reset" onclick="resetTimer()">RESET</button>
+        <!-- Elemen Setting ini disembunyikan total dari Peserta via JavaScript -->
+        <div id="admin-controls">
+            <div class="input-group">
+                <input type="number" id="minutes-input" min="1" max="60" value="5">
+            </div>
+            <div class="button-group">
+                <button class="btn-start" onclick="adminStartTimer()">MULAI sesi</button>
+                <button class="btn-reset" onclick="adminResetTimer()">RESET DATA</button>
+            </div>
         </div>
 
         <div class="countdown-flex">
-            <div class="time-box" id="box-min">
+            <div class="time-box">
                 <span id="display-minutes" class="number">05</span>
                 <span class="label">Menit</span>
             </div>
-            <div class="time-box" id="box-sec">
+            <div class="time-box">
                 <span id="display-seconds" class="number">00</span>
                 <span class="label">Detik</span>
             </div>
@@ -185,7 +183,7 @@
     <!-- BOX 2: LIVE VOTING SYSTEM -->
     <div class="container">
         <h2>Live Voting Skor</h2>
-        <div id="user-status">Memeriksa tautan peserta...</div>
+        <div id="user-status">Menghubungkan ke server...</div>
         
         <div class="voting-flex">
             <div class="team-card">
@@ -201,15 +199,14 @@
         </div>
     </div>
 
-    <!-- Script SDK Firebase Kompatibel -->
+    <!-- Firebase Library -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
 
     <script>
-        // Konfigurasi Database Milik Anda yang Sudah Terintegrasi
         const firebaseConfig = {
             apiKey: "AIzaSyDFQvJ9K7mEOwF1Q3U6OddbXKMuT9Opdqg",
-            authDomain: "db-te-bas-juli-2026.firebaseapp.com",
+            authDomain: "://firebaseapp.com",
             databaseURL: "https://db-te-bas-juli-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "db-te-bas-juli-2026",
             storageBucket: "db-te-bas-juli-2026.firebasestorage.app",
@@ -219,76 +216,64 @@
         };
         
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        
+        // FIX UTAMA: Memasukkan URL database secara eksplisit untuk Region Asia (Singapore)
+        const database = firebase.database("https://db-te-bas-juli-2026-default-rtdb.asia-southeast1.firebasedatabase.app");
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user');
 
+        // Deteksi peran: Jika link mengandung kata '?user=', dia adalah peserta
+        let isParticipant = urlParams.has('user'); 
         let countdownInterval = null;
-        let alarmInterval = null;
-        let audioCtx = null;
-        let timerActive = false;
+        let localSecondsLeft = 300;
+        let serverTimerActive = false;
 
-        // Mendengarkan Pembaruan Skor Secara Live
+        // EKSEKUSI PEMISAHAN TAMPILAN
+        if (isParticipant) {
+            document.getElementById('admin-controls').style.innerHTML = ""; 
+            document.getElementById('admin-controls').style.display = 'none'; // Hilangkan setelan total dari peserta
+            document.getElementById('timer-title').innerText = "Sisa Waktu Pemilihan";
+        } else {
+            document.getElementById('timer-title').innerText = "Panel Kontrol Utama Admin";
+        }
+
+        // Sinkronisasi Skor Live
         database.ref('votes/scores').on('value', (snapshot) => {
             const data = snapshot.val() || { teamA: 0, teamB: 0 };
             document.getElementById('score-teamA').innerText = data.teamA;
             document.getElementById('score-teamB').innerText = data.teamB;
         });
 
-        function startTimer() {
-            clearInterval(countdownInterval);
-            stopAlarm();
-            clearVisualEffects();
+        // Sinkronisasi Status Timer Sesi
+        database.ref('votes/timerState').on('value', (snapshot) => {
+            const state = snapshot.val();
+            if (state) {
+                serverTimerActive = state.isActive;
+                localSecondsLeft = state.secondsLeft;
+                updateDisplay(localSecondsLeft);
 
-            const inputMinutes = parseInt(document.getElementById("minutes-input").value);
-            if (isNaN(inputMinutes) || inputMinutes <= 0) {
-                alert("Masukkan menit yang valid!");
-                return;
-            }
-
-            let totalSeconds = inputMinutes * 60;
-            timerActive = true;
-            updateDisplay(totalSeconds);
-            checkUserVotingStatus();
-
-            countdownInterval = setInterval(() => {
-                totalSeconds--;
-                updateDisplay(totalSeconds);
-
-                if (totalSeconds <= 0) {
+                if (serverTimerActive && !countdownInterval) {
+                    runClockLogic();
+                } else if (!serverTimerActive) {
                     clearInterval(countdownInterval);
-                    timerActive = false;
-                    activateTimeUpEffects();
-                    disableVotingButtons("Waktu pemilihan telah habis! 🚨");
-                    playAlarmLoop();
+                    countdownInterval = null;
                 }
-            }, 1000);
-        }
 
-        function resetTimer() {
+                if (localSecondsLeft <= 0) {
+                    document.getElementById("timer-container").classList.add("time-up-container");
+                    disableVotingButtons("Sesi voting ditutup / berakhir! 🚨");
+                } else {
+                    document.getElementById("timer-container").classList.remove("time-up-container");
+                    checkUserVotingStatus();
+                }
+            }
+        });
+
+        function runClockLogic() {
             clearInterval(countdownInterval);
-            stopAlarm();
-            timerActive = false;
-            clearVisualEffects();
-            
-            const inputMinutes = parseInt(document.getElementById("minutes-input").value) || 5;
-            updateDisplay(inputMinutes * 60);
-            checkUserVotingStatus();
-        }
+            countdownInterval = setInterval(() => {
+                if (localSecondsLeft > 0 && serverTimerActive) {
+                    localSecondsLeft--;
+                    updateDisplay(localSecondsLeft);
 
-        function checkUserVotingStatus() {
-            const statusDiv = document.getElementById('user-status');
-            
-            if (!userId) {
-                disableVotingButtons("Akses Ditolak: Anda perlu tautan khusus (?user=nama)");
-                return;
-            }
-
-            if (!timerActive) {
-                disableVotingButtons("Tombol Terkunci: Waktu countdown belum dimulai.");
-                return;
-            }
-
-            database.ref('votes/voters/' + userId).once('value').then((snapshot) => {
-                if (snapshot.exists()) {
