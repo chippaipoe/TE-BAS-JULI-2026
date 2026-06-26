@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Voting & Countdown System Official</title>
+    <title>Sistem Live Voting & Countdown Resmi</title>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -157,13 +157,13 @@
     <div class="container" id="timer-container">
         <h1 id="timer-title">Panel Pengatur Waktu</h1>
         
-        <!-- Elemen Setting ini disembunyikan total dari Peserta via JavaScript -->
+        <!-- Sisi pengaturan admin -->
         <div id="admin-controls">
             <div class="input-group">
                 <input type="number" id="minutes-input" min="1" max="60" value="5">
             </div>
             <div class="button-group">
-                <button class="btn-start" onclick="adminStartTimer()">MULAI sesi</button>
+                <button class="btn-start" onclick="adminStartTimer()">MULAI SESI</button>
                 <button class="btn-reset" onclick="adminResetTimer()">RESET DATA</button>
             </div>
         </div>
@@ -199,15 +199,16 @@
         </div>
     </div>
 
-    <!-- Firebase Library -->
+    <!-- Pustaka Inti Firebase (Versi Stabil yang Direkomendasikan) -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
 
     <script>
+        // Memakai data konfigurasi database resmi milik Anda
         const firebaseConfig = {
             apiKey: "AIzaSyDFQvJ9K7mEOwF1Q3U6OddbXKMuT9Opdqg",
             authDomain: "://firebaseapp.com",
-            databaseURL: "https://db-te-bas-juli-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://firebasedatabase.app",
             projectId: "db-te-bas-juli-2026",
             storageBucket: "db-te-bas-juli-2026.firebasestorage.app",
             messagingSenderId: "523158894524",
@@ -217,35 +218,37 @@
         
         firebase.initializeApp(firebaseConfig);
         
-        // FIX UTAMA: Memasukkan URL database secara eksplisit untuk Region Asia (Singapore)
-        const database = firebase.database("https://db-te-bas-juli-2026-default-rtdb.asia-southeast1.firebasedatabase.app");
+        // Memaksa sambungan langsung ke URL server wilayah Asia Tenggara (Singapore)
+        const database = firebase.database("https://firebasedatabase.app");
 
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('user');
 
-        // Deteksi peran: Jika link mengandung kata '?user=', dia adalah peserta
         let isParticipant = urlParams.has('user'); 
         let countdownInterval = null;
         let localSecondsLeft = 300;
         let serverTimerActive = false;
 
-        // EKSEKUSI PEMISAHAN TAMPILAN
+        // PERBAIKAN LOGIKA: Sembunyikan setelan input dari layar peserta tanpa memicu eror skrip
         if (isParticipant) {
-            document.getElementById('admin-controls').style.innerHTML = ""; 
-            document.getElementById('admin-controls').style.display = 'none'; // Hilangkan setelan total dari peserta
+            const adminBox = document.getElementById('admin-controls');
+            if (adminBox) {
+                adminBox.innerHTML = ""; 
+                adminBox.style.display = 'none'; 
+            }
             document.getElementById('timer-title').innerText = "Sisa Waktu Pemilihan";
         } else {
             document.getElementById('timer-title').innerText = "Panel Kontrol Utama Admin";
         }
 
-        // Sinkronisasi Skor Live
+        // Sinkronisasi Perubahan Skor Live dari Firebase
         database.ref('votes/scores').on('value', (snapshot) => {
             const data = snapshot.val() || { teamA: 0, teamB: 0 };
             document.getElementById('score-teamA').innerText = data.teamA;
             document.getElementById('score-teamB').innerText = data.teamB;
         });
 
-        // Sinkronisasi Status Timer Sesi
+        // Sinkronisasi Sisa Waktu Detik dari Firebase
         database.ref('votes/timerState').on('value', (snapshot) => {
             const state = snapshot.val();
             if (state) {
@@ -274,6 +277,3 @@
             clearInterval(countdownInterval);
             countdownInterval = setInterval(() => {
                 if (localSecondsLeft > 0 && serverTimerActive) {
-                    localSecondsLeft--;
-                    updateDisplay(localSecondsLeft);
-
